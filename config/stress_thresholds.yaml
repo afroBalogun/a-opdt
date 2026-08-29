@@ -1,0 +1,108 @@
+# Reactive Layer Stress Thresholds
+# Maps sensor divergence signals to FSM state transitions.
+# Each rule defines the condition, severity, and escalation message.
+# Growth-stage-aware overrides are noted where critical windows apply.
+
+rules:
+
+  drought:
+    trigger_fields: [soil_moisture, canopy_air_delta, fv_fm]
+    conditions:
+      warning:
+        soil_moisture_below: 0.20
+        canopy_air_delta_above: 1.2
+      critical:
+        soil_moisture_below: 0.13
+        canopy_air_delta_above: 2.8
+        fv_fm_below: 0.70
+    critical_stage_override:        # tighter thresholds during anthesis / grain_fill
+      stages: [anthesis, grain_fill]
+      warning:
+        soil_moisture_below: 0.22
+        canopy_air_delta_above: 0.8
+      critical:
+        soil_moisture_below: 0.15
+        canopy_air_delta_above: 2.5
+    time_to_irreversible_damage_hours:
+      warning: 72
+      critical: 24
+
+  heat_stress:
+    trigger_fields: [canopy_temperature, isoprene, fv_fm]
+    conditions:
+      warning:
+        canopy_temperature_above: 33.0
+        isoprene_above: 10.0
+      critical:
+        canopy_temperature_above: 36.0
+        isoprene_above: 18.0
+    critical_stage_override:
+      stages: [anthesis]
+      warning:
+        canopy_temperature_above: 32.0   # pollen viability drops at 32°C
+      critical:
+        canopy_temperature_above: 35.0   # pollen sterility threshold
+    time_to_irreversible_damage_hours:
+      warning: 6
+      critical: 2
+
+  frost:
+    trigger_fields: [canopy_temperature, air_temperature]
+    conditions:
+      warning:
+        canopy_temperature_below: 5.0
+      critical:
+        canopy_temperature_below: 2.0
+    time_to_irreversible_damage_hours:
+      warning: 4
+      critical: 1
+
+  photosystem_stress:
+    trigger_fields: [fv_fm, phi_psii, ndvi]
+    conditions:
+      warning:
+        fv_fm_below: 0.74
+        phi_psii_below: 0.50
+      critical:
+        fv_fm_below: 0.68
+        phi_psii_below: 0.38
+    time_to_irreversible_damage_hours:
+      warning: 96
+      critical: 48
+
+  salinity:
+    trigger_fields: [soil_ec, ethylene]
+    conditions:
+      warning:
+        soil_ec_above: 1.8
+      critical:
+        soil_ec_above: 3.0
+    time_to_irreversible_damage_hours:
+      warning: 168
+      critical: 72
+
+  nutrient_deficiency:
+    trigger_fields: [soil_nitrogen, soil_phosphorus, red_edge_slope]
+    conditions:
+      warning:
+        soil_nitrogen_below: 30.0
+        soil_phosphorus_below: 11.0
+      critical:
+        soil_nitrogen_below: 18.0
+        soil_phosphorus_below: 7.0
+    time_to_irreversible_damage_hours:
+      warning: 336
+      critical: 168
+
+  pest_pressure:
+    trigger_fields: [hexenal, ethylene, ndvi]
+    conditions:
+      warning:
+        hexenal_above: 4.0
+        ethylene_above: 1.6
+      critical:
+        hexenal_above: 8.0
+        ethylene_above: 3.0
+    time_to_irreversible_damage_hours:
+      warning: 48
+      critical: 12

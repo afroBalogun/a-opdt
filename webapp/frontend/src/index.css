@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/*
+ * A-OPDT design tokens.
+ *
+ * Editorial botanical: a pale sage ground, near-black ink, thin wide-tracked
+ * uppercase display type, generous whitespace and an asymmetric grid, broken by
+ * full-bleed dark panels.
+ *
+ * Contrast is the thing to be careful with here. Every ink colour below is
+ * chosen against the pale ground and is unreadable on the dark panels, so text
+ * placed there must use the paper scale instead. The typography components in
+ * components/Type.tsx take an `onDark` prop precisely so that choice is made
+ * once per component rather than remembered at each use.
+ */
+@theme {
+  --color-bone:      #e8eae3;
+  --color-paper:     #f3f4ef;
+  --color-ink:       #14170e;
+  --color-ink-soft:  #454a39;
+  /* #868b78 measured 2.90:1 against the bone ground, below the 4.5:1 that body
+     text needs. This is the same sage darkened until captions are legible. */
+  --color-muted:     #5f6553;
+  --color-moss:      #2c3a22;
+  --color-moss-deep: #171f11;
+
+  --color-ok:   #4a6b3a;
+  --color-warn: #9a6b18;
+  --color-crit: #8c3a22;
+
+  --font-sans: "Helvetica Neue", "Inter", ui-sans-serif, system-ui, -apple-system,
+               "Segoe UI", sans-serif;
+
+  /* Display sizes are fluid so headings hold their proportion from phone to
+     desktop without a breakpoint for each step. */
+  --text-display:    clamp(2.1rem, 6.2vw, 5.4rem);
+  --text-display-sm: clamp(1.5rem, 3.4vw, 2.6rem);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply bg-bone text-ink font-sans text-[15px] leading-relaxed;
+    /* The full-bleed leaf artwork is deliberately wider than the viewport and
+       would otherwise let the page scroll sideways. */
+    overflow-x: hidden;
+  }
+
+  /* Square corners and hairline borders are part of the look, so the default
+     focus ring is replaced with something that matches it. */
+  :focus-visible {
+    @apply outline-none border-moss ring-1 ring-moss;
+  }
+}

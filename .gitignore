@@ -1,0 +1,16 @@
+# Local virtualenv (dyon is installed here; see README)
+.venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Secrets — .env is currently tracked; see note in README
+# .env
+.env
+# Cloud credential files. NOTE: .env is already tracked (see README), so a
+# gitignore rule cannot untrack it - these rules only protect new files.
+.env.cloud
+.env.*.cloud
+*.env.cloud
+.env # the rule is currently commented out

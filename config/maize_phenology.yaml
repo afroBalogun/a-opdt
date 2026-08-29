@@ -1,0 +1,70 @@
+# Maize Phenology Configuration
+# Thermal time (Growing Degree Days) thresholds for each growth stage.
+# GDD = max(0, (T_max + T_min) / 2 - T_base)
+# Source: adapted from DSSAT CERES-Maize phenology parameters for
+# tropical lowland varieties common in West/East Africa.
+
+crop: maize
+variety: tropical_lowland_generic
+t_base: 8.0          # Base temperature (°C) below which no development occurs
+t_opt: 30.0          # Optimal temperature for development
+t_max: 45.0          # Temperature above which development stops
+
+# Days After Sowing (DAS) and cumulative GDD for each stage
+# These drive the GrowthStageEngine clock in mock mode
+growth_stages:
+  - name: germination
+    das_start: 0
+    das_end: 7
+    gdd_start: 0
+    gdd_end: 60
+    description: "Seed imbibition through radicle emergence"
+    critical_stress_window: false
+
+  - name: vegetative_early    # V1–V4
+    das_start: 7
+    das_end: 21
+    gdd_start: 60
+    gdd_end: 200
+    description: "First leaf through fourth leaf collar visible"
+    critical_stress_window: false
+
+  - name: vegetative_late     # V5–V10
+    das_start: 21
+    das_end: 40
+    gdd_start: 200
+    gdd_end: 450
+    description: "Rapid vegetative growth, canopy establishment"
+    critical_stress_window: false
+
+  - name: anthesis            # VT / R1 — MOST CRITICAL
+    das_start: 40
+    das_end: 50
+    gdd_start: 450
+    gdd_end: 600
+    description: "Tassel emergence through silk emergence. Heat stress here = irreversible yield loss"
+    critical_stress_window: true
+
+  - name: grain_fill          # R2–R4
+    das_start: 50
+    das_end: 85
+    gdd_start: 600
+    gdd_end: 950
+    description: "Blister through dough stage. Drought stress severely reduces kernel weight"
+    critical_stress_window: true
+
+  - name: maturity            # R5–R6
+    das_start: 85
+    das_end: 110
+    gdd_start: 950
+    gdd_end: 1200
+    description: "Dent through physiological maturity"
+    critical_stress_window: false
+
+# Simulation clock settings for mock publisher
+simulation:
+  days_per_real_second: 0.1      # 1 simulated day = 10 real seconds (speeds up testing)
+  publish_interval_seconds: 15   # how often mock sensors publish (real seconds)
+  start_das: 0                   # start simulation at day 0 (germination)
+  ambient_temp_mean: 27.0        # mean ambient temperature (°C) for West Africa
+  ambient_temp_diurnal_range: 8.0  # day/night swing (°C)

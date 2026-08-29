@@ -1,0 +1,114 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+    - 1883:1883
+    volumes:
+    - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped
+  influxdb:
+    image: influxdb:2
+    ports:
+    - 8086:8086
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: password
+      DOCKER_INFLUXDB_INIT_ORG: a_opdt
+      DOCKER_INFLUXDB_INIT_BUCKET: maize_telemetry
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: aopdt-super-secret-token
+    volumes:
+    - influxdb_data:/var/lib/influxdb2
+    restart: unless-stopped
+  mongodb:
+    image: mongo:7
+    ports:
+    - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+    - mongodb_data:/data/db
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    ports:
+    - 6379:6379
+    restart: unless-stopped
+  ditto-mongodb:
+    image: mongo:5
+    volumes:
+    - ditto_data:/data/db
+    restart: unless-stopped
+  ditto-policies:
+    image: docker.io/eclipse/ditto-policies:latest
+    networks: &id001
+      default:
+        aliases:
+        - ditto-cluster
+    environment:
+      MONGO_DB_URI: mongodb://ditto-mongodb:27017/policies
+    depends_on:
+    - ditto-mongodb
+    restart: on-failure
+  ditto-things:
+    image: docker.io/eclipse/ditto-things:latest
+    networks: *id001
+    environment:
+      MONGO_DB_URI: mongodb://ditto-mongodb:27017/things
+    depends_on:
+    - ditto-mongodb
+    restart: on-failure
+  ditto-gateway:
+    image: docker.io/eclipse/ditto-gateway:latest
+    networks: *id001
+    environment:
+      ENABLE_PRE_AUTHENTICATION: 'true'
+    depends_on:
+    - ditto-policies
+    - ditto-things
+    restart: on-failure
+  ditto-nginx:
+    image: nginx:alpine
+    ports:
+    - 8080:8080
+    configs:
+    - source: ditto_nginx_conf
+      target: /etc/nginx/nginx.conf
+    - source: ditto_nginx_htpasswd
+      target: /etc/nginx/nginx.htpasswd
+    depends_on:
+    - ditto-gateway
+    restart: unless-stopped
+  neo4j:
+    image: neo4j:5
+    ports:
+    - 7474:7474
+    - 7687:7687
+    environment:
+      NEO4J_AUTH: neo4j/aopdt_password
+    volumes:
+    - neo4j_data:/data
+    restart: unless-stopped
+volumes:
+  influxdb_data: null
+  mongodb_data: null
+  ditto_data: null
+  neo4j_data: null
+configs:
+  ditto_nginx_conf:
+    content: "worker_processes 1;\nevents { worker_connections 1024; }\nhttp {\n \
+      \ upstream ditto-gateway { server ditto-gateway:8080; }\n  server {\n    listen\
+      \ 8080;\n    # Health probe \u2014 no auth required\n    location /health {\n\
+      \      proxy_pass       http://ditto-gateway;\n      proxy_set_header Host $$host;\n\
+      \    }\n    # Everything else \u2014 validate basic auth, then pre-authenticate\n\
+      \    location / {\n      auth_basic           \"DITTO\";\n      auth_basic_user_file\
+      \ /etc/nginx/nginx.htpasswd;\n      proxy_pass           http://ditto-gateway;\n\
+      \      proxy_set_header     Host $$host;\n      proxy_set_header     x-ditto-pre-authenticated\
+      \ \"nginx:$$remote_user\";\n      proxy_set_header     X-Real-IP        $$remote_addr;\n\
+      \      proxy_set_header     X-Forwarded-For  $$proxy_add_x_forwarded_for;\n\
+      \    }\n  }\n}\n"
+  ditto_nginx_htpasswd:
+    content: 'ditto:$$apr1$$37cef878$$bZZ99KtNWu56u5oXEdMwF0
+
+      '
