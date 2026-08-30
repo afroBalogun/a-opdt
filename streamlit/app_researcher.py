@@ -311,7 +311,8 @@ def advisor_view() -> None:
     st.caption(
         "The agent reads the twin's own accessors — state, readings, irrigation "
         "depth, stage forecast — and answers from them. Fields with no "
-        "instrument are reported as nominals."
+        "instrument carry no value it can use, and it will say so rather than "
+        "estimate."
     )
 
     if "chat" not in st.session_state:
