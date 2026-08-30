@@ -17,7 +17,13 @@ const SUGGESTIONS = [
   "When does the next growth stage start?",
 ];
 
-export function Advisor() {
+/**
+ * `className` defaults to the same mt-12 the dashboards use between major
+ * sections, so the panel sits in the page rhythm rather than flush against
+ * whatever precedes it. Callers can override where the surrounding layout
+ * already provides the gap.
+ */
+export function Advisor({ className = "mt-12" }: { className?: string } = {}) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +46,7 @@ export function Advisor() {
   }
 
   return (
-    <section className="bg-paper border border-ink/15 p-[clamp(1.25rem,3vw,2rem)]">
+    <section className={`bg-paper border border-ink/15 p-[clamp(1.25rem,3vw,2rem)] ${className}`}>
       <Eyebrow>Ask the twin</Eyebrow>
 
       <form
