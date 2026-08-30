@@ -7,6 +7,7 @@ import { Display, Eyebrow, Fine, Lede } from "../components/Type";
 import { Sprig } from "../components/Botanical";
 import { DashboardShell, DashboardSkeleton, ProvenanceNotice, ReadingCard } from "./Readings";
 import { FarmerActions } from "./FarmerActions";
+import { Advisor } from "../components/Advisor";
 
 const REFRESH_MS = 15000;
 
@@ -84,6 +85,7 @@ export function FarmerDashboard({ user }: { user: User }) {
           ))}
         </div>
       </section>
+      <Advisor />
     </DashboardShell>
   );
 }

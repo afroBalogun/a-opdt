@@ -130,6 +130,20 @@ export const fetchResearcherDashboard = () =>
 export const fetchFarmerDashboard = () =>
   request<FarmerDashboard>("/api/dashboard/farmer");
 
+/* ── Advisor ──────────────────────────────────────────────────────────── */
+
+export interface AdvisorReply { answer: string }
+
+/**
+ * Ask the twin a question. The backend decides which of its own accessors to
+ * read; nothing here shapes the answer.
+ */
+export const askAdvisor = (question: string) =>
+  request<AdvisorReply>("/api/advisor/ask", {
+    method: "POST",
+    body: JSON.stringify({ question }),
+  });
+
 /** Title-case an FSM state such as MULTI_STRESS for display. */
 export const prettyState = (s: string) =>
   s.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());

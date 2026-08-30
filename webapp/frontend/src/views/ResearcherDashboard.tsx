@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Advisor } from "../components/Advisor";
 import {
   fetchResearcherDashboard, prettyStage, prettyState,
   type ResearcherDashboard as Data, type User,
@@ -102,6 +103,7 @@ export function ResearcherDashboard({ user }: { user: User }) {
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
         {children}
       </div>
+      <Advisor />
     </DashboardShell>
   );
 
