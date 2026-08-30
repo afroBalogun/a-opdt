@@ -26,6 +26,44 @@ LIVE_WITHIN_MIN = 5
 
 st.set_page_config(page_title="A-OPDT Researcher", page_icon="🌱", layout="wide")
 
+#: Tokens copied from webapp/frontend/src/index.css. The React portal and this
+#: one describe the same plant; they should not look like different products.
+INK, INK_SOFT, MUTED = "#14170e", "#454a39", "#5f6553"
+MOSS, BONE, PAPER = "#2c3a22", "#e8eae3", "#f3f4ef"
+OK, WARN, CRIT = "#4a6b3a", "#9a6b18", "#8c3a22"
+
+st.markdown(f"""
+<style>
+  html, body, [class*="css"] {{
+    font-family: "Helvetica Neue", Inter, ui-sans-serif, system-ui, sans-serif;
+  }}
+  /* Editorial rather than dashboard: light weights, generous tracking on the
+     small labels, numbers allowed to be large. */
+  [data-testid="stMetricValue"] {{
+    font-weight: 300; color: {INK}; letter-spacing: -0.01em;
+  }}
+  [data-testid="stMetricLabel"] {{
+    text-transform: uppercase; letter-spacing: 0.16em;
+    font-size: 0.62rem !important; color: {MUTED};
+  }}
+  h1, h2, h3 {{ font-weight: 400; letter-spacing: -0.01em; color: {INK}; }}
+  h3 {{
+    border-bottom: 1px solid {INK}22; padding-bottom: .35rem;
+    margin-top: 2.2rem; font-size: 1.05rem;
+  }}
+  section[data-testid="stSidebar"] {{ background: {BONE}; }}
+  .stButton button {{
+    border-radius: 2px; border: 1px solid {INK}26; background: transparent;
+    color: {INK}; font-weight: 400;
+  }}
+  .stButton button:hover {{ border-color: {MOSS}; color: {MOSS}; }}
+  .prov {{
+    display:inline-block; padding:1px 8px; border-radius:2px;
+    font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase;
+  }}
+</style>
+""", unsafe_allow_html=True)
+
 
 # ── Transport ───────────────────────────────────────────────────────────────
 
@@ -101,12 +139,24 @@ def sign_in_view() -> None:
 
 # ── Dashboard ───────────────────────────────────────────────────────────────
 
-def _provenance_chip(provenance: str) -> str:
+def _provenance_chip(provenance: str, has_value: bool) -> str:
+    """
+    Three states, not two.
+
+    "nominal" from the API means only "not measured". But a field with a value
+    in the store is not a static placeholder - MockSensorPublisher writes all
+    nineteen fields every 15 s with noise and drift, so those numbers MOVE and
+    trip the stress rules. Calling them nominal invites them to be read as a
+    harmless default. They are simulated, which is a different and more
+    convincing kind of not-real.
+    """
     if provenance == "measured":
-        return ("<span style='background:#14532d;color:#fff;padding:1px 7px;"
-                "border-radius:9px;font-size:0.68rem'>MEASURED</span>")
-    return ("<span style='background:#3f3f46;color:#d4d4d8;padding:1px 7px;"
-            "border-radius:9px;font-size:0.68rem'>NOMINAL</span>")
+        return f"<span class='prov' style='background:{MOSS};color:{PAPER}'>measured</span>"
+    if has_value:
+        return (f"<span class='prov' style='background:{WARN}22;color:{WARN};"
+                f"border:1px solid {WARN}55'>simulated</span>")
+    return (f"<span class='prov' style='background:{INK}0d;color:{MUTED};"
+            f"border:1px solid {INK}22'>stage nominal</span>")
 
 
 def dashboard_view(data: dict) -> None:
@@ -124,14 +174,16 @@ def dashboard_view(data: dict) -> None:
     # to be read as an observation.
     if total and measured == 0:
         st.warning(
-            "No sensor data has reached the twin. Every value below is the "
-            "growth-stage nominal — a starting assumption, not an observation "
-            "of this plant."
+            "**No instrument has reported.** Every value below is produced by "
+            "the twin's simulator, which writes all nineteen fields with noise "
+            "and drift — so they move, and they trip the stress rules above. "
+            "Nothing here is an observation of this plant."
         )
     elif measured < total:
         st.info(
-            f"{measured} of {total} parameters come from instruments. The rest "
-            "are growth-stage nominals and are labelled below."
+            f"**{measured} of {total} parameters come from instruments.** The "
+            "rest are simulated or stage defaults, labelled per field below. "
+            "Only the measured ones describe this plant."
         )
 
     active = data.get("active_categories") or {}
@@ -149,8 +201,10 @@ def dashboard_view(data: dict) -> None:
                     item.get("label", item.get("field", "—")),
                     f"{val:.2f} {item.get('unit', '')}".strip() if isinstance(val, (int, float)) else "—",
                 )
-                st.markdown(_provenance_chip(item.get("provenance", "nominal")),
-                            unsafe_allow_html=True)
+                st.markdown(
+                    _provenance_chip(item.get("provenance", "nominal"),
+                                     isinstance(val, (int, float))),
+                    unsafe_allow_html=True)
                 status = item.get("status")
                 if status and status != "ok":
                     st.caption(f"status: {status}")

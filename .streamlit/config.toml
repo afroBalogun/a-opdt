@@ -1,0 +1,15 @@
+# Matches webapp/frontend/src/index.css so the Streamlit portal and the React
+# one read as the same product. Paper and ink, not a dark dashboard.
+[theme]
+base                = "light"
+primaryColor        = "#2c3a22"   # moss
+backgroundColor     = "#f3f4ef"   # paper
+secondaryBackgroundColor = "#e8eae3"  # bone
+textColor           = "#14170e"   # ink
+font                = "sans serif"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false
