@@ -119,6 +119,9 @@ class FieldReading(BaseModel):
 
 
 class ResearcherDashboard(BaseModel):
+    #: Minutes since the pod last reported. None means it never has. The
+    #: dashboard needs this to tell a live node from one that stopped.
+    measured_age_min: Optional[float] = None
     growth_stage: str
     health_score: float
     plant_state: str

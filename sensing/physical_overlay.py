@@ -168,6 +168,12 @@ class PhysicalSensorOverlay:
             return
         try:
             self._cache.set_latest("measured_fields", ",".join(measured))
+            # When, as well as what. A dashboard that cannot say how old a
+            # reading is cannot distinguish a live node from one that stopped
+            # an hour ago, which is the failure this pair of keys exists to
+            # prevent.
+            self._cache.set_latest(
+                "measured_at", str(time.time()) if measured else "")
         except Exception as exc:                      # noqa: BLE001
             log.debug("could not cache measured_fields: %s", exc)
 

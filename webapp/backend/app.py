@@ -284,6 +284,18 @@ def _health_from(stage: str, readings: dict[str, Optional[float]],
     return health
 
 
+def _measured_age_min() -> Optional[float]:
+    """Minutes since the pod last reported, or None if it never has."""
+    raw = cache.get_latest_cached("measured_at")
+    try:
+        stamp = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if stamp <= 0:
+        return None
+    return max(0.0, (datetime.now(timezone.utc).timestamp() - stamp) / 60.0)
+
+
 def _assess(stage: str, readings: dict[str, Optional[float]]) -> tuple[float, str, dict[str, str]]:
     """Health score, FSM state and active stress categories for a reading set."""
     severities = evaluate_stress_rules(STRESS_RULES, readings, stage)
@@ -314,6 +326,7 @@ def researcher_dashboard(
     bb_slope = cache.get_latest_cached("calibrated_bb_slope_m")
 
     return ResearcherDashboard(
+        measured_age_min=_measured_age_min(),
         growth_stage=stage,
         health_score=health,
         plant_state=state,

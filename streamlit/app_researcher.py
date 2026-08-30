@@ -162,12 +162,30 @@ def _provenance_chip(provenance: str, has_value: bool) -> str:
 def dashboard_view(data: dict) -> None:
     measured = data.get("measured_count", 0)
     total = data.get("total_count", 0)
+    age = data.get("measured_age_min")
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Health score", f"{data.get('health_score', 0):.1f}")
-    c2.metric("Plant state", str(data.get("plant_state", "—")).replace("_", " ").title())
+    # Health is computed over whatever has a value. With nothing measured that
+    # is a score of simulated data, which is not a score of this plant.
+    c1.metric("Health score",
+              f"{data.get('health_score', 0):.1f}" if measured else "—")
+    c2.metric("Plant state",
+              str(data.get("plant_state", "—")).replace("_", " ").title()
+              if measured else "—")
     c3.metric("Growth stage", str(data.get("growth_stage", "—")).replace("_", " ").title())
     c4.metric("Instrumented", f"{measured} of {total}")
+
+    # Liveness is a property of the newest reading, never of a cached status
+    # string. This is the line that proves the number beside it is current.
+    if age is None:
+        st.error("**SENSOR LINK — NO DATA.** The pod has never reported to this twin.")
+    elif age <= LIVE_WITHIN_MIN:
+        st.success(f"**SENSOR LINK — LIVE.** Last reading {age:.1f} min ago.")
+    else:
+        st.warning(
+            f"**SENSOR LINK — STALE.** Last reading {age:.0f} min ago. "
+            f"Anything older than {LIVE_WITHIN_MIN} min means the node stopped."
+        )
 
     # The count is the honest headline. A dashboard that shows nineteen numbers
     # without saying how many came from an instrument invites every one of them
@@ -187,27 +205,58 @@ def dashboard_view(data: dict) -> None:
         )
 
     active = data.get("active_categories") or {}
-    if active:
+    if active and measured:
         st.error("Active stress: " + ", ".join(
             f"**{k.replace('_', ' ')}** ({v})" for k, v in active.items()))
+    elif active:
+        # The rules fired on simulator output. Reporting that as a stress on
+        # this plant is exactly the false alarm this dashboard should not raise.
+        st.caption(
+            "Stress rules fired on simulated values (" +
+            ", ".join(k.replace("_", " ") for k in active) +
+            "). Not shown as active: no instrument backs them."
+        )
+
+    show_unmeasured = st.toggle(
+        "Show fields with no instrument",
+        value=False,
+        help="Off by default. Values for uninstrumented fields are produced by "
+             "the twin's simulator, and a number on screen gets believed.",
+    )
 
     for group, items in (data.get("groups") or {}).items():
+        visible = [i for i in items
+                   if show_unmeasured or i.get("provenance") == "measured"]
+        if not visible:
+            continue
         st.subheader(group.replace("_", " ").title())
-        cols = st.columns(min(4, max(1, len(items))))
-        for i, item in enumerate(items):
+        cols = st.columns(min(4, max(1, len(visible))))
+        for i, item in enumerate(visible):
             with cols[i % len(cols)]:
                 val = item.get("value")
-                st.metric(
-                    item.get("label", item.get("field", "—")),
-                    f"{val:.2f} {item.get('unit', '')}".strip() if isinstance(val, (int, float)) else "—",
-                )
+                is_measured = item.get("provenance") == "measured"
+                # A simulated value is not shown as a number. Withholding it is
+                # the only way to be sure it is not read as a measurement; the
+                # chip alone was not enough, because the figure is what the eye
+                # takes.
+                display = (f"{val:.2f} {item.get('unit', '')}".strip()
+                           if is_measured and isinstance(val, (int, float)) else "—")
+                st.metric(item.get("label", item.get("field", "—")), display)
                 st.markdown(
                     _provenance_chip(item.get("provenance", "nominal"),
                                      isinstance(val, (int, float))),
                     unsafe_allow_html=True)
                 status = item.get("status")
-                if status and status != "ok":
+                if is_measured and status and status != "ok":
                     st.caption(f"status: {status}")
+
+    if not show_unmeasured:
+        hidden = total - measured
+        if hidden > 0:
+            st.caption(
+                f"{hidden} uninstrumented fields hidden. They carry simulator "
+                "output, not observations."
+            )
 
 
 # ── History ─────────────────────────────────────────────────────────────────
