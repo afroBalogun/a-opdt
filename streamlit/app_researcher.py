@@ -307,7 +307,7 @@ def history_view() -> None:
 # ── Advisor ─────────────────────────────────────────────────────────────────
 
 def advisor_view() -> None:
-    st.subheader("Ask the twin")
+    st.subheader("Ask the Plant")
     st.caption(
         "The agent reads the twin's own accessors — state, readings, irrigation "
         "depth, stage forecast — and answers from them. Fields with no "
@@ -374,7 +374,7 @@ def main() -> None:
         st.markdown(f"### 🌱 {user.get('name', 'User')}")
         st.caption(f"{user.get('email', '')} — {str(user.get('role', '')).title()}")
         st.divider()
-        view = st.radio("View", ["Dashboard", "History", "Ask the Twin"],
+        view = st.radio("View", ["Dashboard", "History", "Ask the Plant"],
                         label_visibility="collapsed")
         st.divider()
         if st.button("Refresh", use_container_width=True):

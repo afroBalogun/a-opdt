@@ -47,7 +47,7 @@ export function Advisor({ className = "mt-12" }: { className?: string } = {}) {
 
   return (
     <section className={`bg-paper border border-ink/15 p-[clamp(1.25rem,3vw,2rem)] ${className}`}>
-      <Eyebrow>Ask the twin</Eyebrow>
+      <Eyebrow>Ask the Plant</Eyebrow>
 
       <form
         className="mt-4 flex flex-wrap gap-3"
