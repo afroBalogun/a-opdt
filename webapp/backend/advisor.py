@@ -48,14 +48,34 @@ def get_twin_state(query: str = "") -> str:
     """
     stage, values, measured = _state()
     health, plant_state, active = _ctx["assess"](stage, values)
+
+    if not measured:
+        # Health, state and stress are computed over whatever has a value, and
+        # with no instrument reporting those values come from the twin's
+        # simulator. Handing the model a score of simulated data invites it to
+        # report the simulator's condition as the plant's.
+        return json.dumps({
+            "growth_stage": stage,
+            "sensor_link": "NO DATA - no instrument has reported to this twin",
+            "health_score": None,
+            "plant_state": None,
+            "active_stress_categories": None,
+            "fields_measured": f"0 of {len(values)}",
+            "note": ("Every field currently holds simulator output. Do not "
+                     "report health, state, or stress: nothing has been "
+                     "observed. Say the node is not reporting."),
+        })
+
     return json.dumps({
         "growth_stage": stage,
+        "sensor_link": f"{len(measured)} of {len(values)} fields instrumented",
         "health_score": round(health, 1),
         "plant_state": plant_state,
         "active_stress_categories": active or "none",
         "fields_measured": f"{len(measured)} of {len(values)}",
-        "note": ("Fields not in the measured set are growth-stage nominals, "
-                 "not observations."),
+        "note": ("Scores are computed only over fields with values. Fields "
+                 "outside the measured set are simulator output, not "
+                 "observations."),
     })
 
 
@@ -74,9 +94,19 @@ def get_readings(fields: str = "") -> str:
             out[f] = "unknown field"
             continue
         band = _ctx["band"](f, stage)
+        if f not in measured:
+            # The value is withheld, not labelled. A number in the tool result
+            # ends up in the answer whatever the label says, and this node has
+            # no instrument for this field.
+            out[f] = {
+                "value": None,
+                "provenance": "not instrumented",
+                "note": "no sensor for this field; any stored value is simulator output",
+            }
+            continue
         out[f] = {
             "value": values[f],
-            "provenance": "measured" if f in measured else "nominal",
+            "provenance": "measured",
             "nominal": band.get("nominal"),
             "warn_low": band.get("warn_low"), "warn_high": band.get("warn_high"),
             "crit_low": band.get("crit_low"), "crit_high": band.get("crit_high"),
@@ -100,7 +130,7 @@ def get_stage_forecast(query: str = "") -> str:
 
 TOOLS = [get_twin_state, get_readings, get_irrigation_advice, get_stage_forecast]
 
-SYSTEM_PROMPT = """You are an agronomy advisor attached to a maize digital twin.
+SYSTEM_PROMPT = """You are an agronomy advisor attached to a plant digital twin.
 
 Answer only from the tools. Call them before answering - do not guess a reading,
 and do not answer from general knowledge about maize when a tool can tell you
@@ -112,9 +142,13 @@ sensor that does not exist on this node - it describes a typical plant at this
 stage, not this one. When your answer depends on a nominal, say so plainly, in
 one short clause. Never present a nominal as an observation.
 
-Only four fields are measured on this hardware: air_temperature,
-relative_humidity, canopy_temperature and canopy_air_delta. Soil nutrients,
-NDVI, PRI, fluorescence and the volatiles are all nominals.
+A field marked "not instrumented" has no sensor and no value you can use. Do
+not estimate it, do not quote a typical figure for it, and do not fold it into
+a conclusion. Say the twin does not measure it.
+
+If sensor_link reports NO DATA, no instrument has reported at all. Do not give
+a health score, a plant state or a stress finding in that case, whatever a
+model might infer - say the node is not reporting and what would be needed.
 
 Be concise and concrete. Give a number and a next action where the tools
 support one. If the tools do not support an answer, say what is missing rather
