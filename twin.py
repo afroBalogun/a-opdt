@@ -104,7 +104,7 @@ class MaizeTwin(AbstractDigitalTwin):
         if os.getenv("A_OPDT_PHYSICAL_POD", "false").lower() == "true":
             from sensing.physical_overlay import PhysicalSensorOverlay
 
-            physical_overlay = PhysicalSensorOverlay(mqtt_transport)
+            physical_overlay = PhysicalSensorOverlay(mqtt_transport, cache=cache)
             physical_overlay.start()
             self.physical_overlay = physical_overlay
 

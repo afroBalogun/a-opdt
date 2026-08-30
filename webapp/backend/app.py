@@ -222,6 +222,21 @@ def _read_twin_state() -> tuple[str, dict[str, float], set[str]]:
     for an unmeasured field is not evidence about this plant.
     """
     stage = cache.get_latest_cached("growth_stage") or "germination"
+
+    # Presence in the time series is NOT provenance. MockSensorPublisher writes
+    # all nineteen simulated fields to InfluxDB, so "has a value" was true for
+    # every one of them and the dashboard reported 19 of 19 measured while
+    # roughly four sensors existed. The overlay publishes the real list; a field
+    # is measured only if it is named there.
+    raw_measured = cache.get_latest_cached("measured_fields")
+    if isinstance(raw_measured, (list, tuple, set)):
+        instrumented = {str(f).strip() for f in raw_measured}
+    elif raw_measured:
+        instrumented = {f.strip() for f in str(raw_measured).split(",") if f.strip()}
+    else:
+        # No overlay, or it has not reported: nothing can be called measured.
+        instrumented = set()
+
     values: dict[str, float] = {}
     measured: set[str] = set()
     for field in SENSOR_FIELD_NAMES:
@@ -230,7 +245,8 @@ def _read_twin_state() -> tuple[str, dict[str, float], set[str]]:
             values[field] = _fallback_value(field, stage)
         else:
             values[field] = raw
-            measured.add(field)
+            if field in instrumented:
+                measured.add(field)
     return stage, values, measured
 
 

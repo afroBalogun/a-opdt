@@ -79,10 +79,15 @@ class PhysicalSensorOverlay:
         mqtt_transport: "MQTTTransport",
         topic: str = DEFAULT_TOPIC,
         max_age_s: float = DEFAULT_MAX_AGE_S,
+        cache=None,
     ):
         self._mqtt = mqtt_transport
         self._topic = topic
         self._max_age = max_age_s
+        # Optional: where the measured-field list is published so the API can
+        # tell an observation from a stage nominal. None disables it, and the
+        # reader then treats every field as nominal.
+        self._cache = cache
 
         self._lock = threading.Lock()
         self._values: dict[str, float] = {}
@@ -122,6 +127,11 @@ class PhysicalSensorOverlay:
         self._note_transition(bool(values))
 
         if not values:
+            # Publish the empty list rather than returning early. Leaving the
+            # previous one in place would keep asserting those fields were
+            # measured after the node went quiet - the same stale-claim bug
+            # this whole change exists to remove.
+            self._publish_provenance([])
             return merged, []
 
         # Only overlay fields the simulator actually produces. A measured field
@@ -136,7 +146,30 @@ class PhysicalSensorOverlay:
                 log.debug("measured field '%s' has no simulated counterpart", field)
 
         measured += self._derive(merged, measured)
-        return merged, sorted(measured)
+        measured = sorted(measured)
+        self._publish_provenance(measured)
+        return merged, measured
+
+    def _publish_provenance(self, measured: list[str]) -> None:
+        """
+        Record which fields came from hardware, where a reader can find it.
+
+        The list has always been returned from apply(), and nothing kept it.
+        The dashboard therefore inferred provenance from "is there a value in
+        InfluxDB" - and since the mock publisher writes all nineteen fields
+        there, every one of them read as measured. Publishing the list to the
+        cache is what lets the API answer the question honestly.
+
+        Best effort: a cache that is down must not stop a reading being
+        overlaid. The reader treats a missing key as "nothing is measured",
+        which errs toward calling a value nominal rather than observed.
+        """
+        if self._cache is None:
+            return
+        try:
+            self._cache.set_latest("measured_fields", ",".join(measured))
+        except Exception as exc:                      # noqa: BLE001
+            log.debug("could not cache measured_fields: %s", exc)
 
     @staticmethod
     def _derive(merged: dict[str, float], measured: list[str]) -> list[str]:
