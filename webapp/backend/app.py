@@ -32,6 +32,7 @@ from dyon.data.storage.influx import InfluxAdapter
 from dyon.data.storage.mongo import MongoAdapter
 from dyon.data.storage.redis_store import RedisAdapter
 
+from webapp.backend import advisor as advisor_mod
 from webapp.backend import advisory as adv
 from webapp.backend import auth as auth_mod
 from webapp.backend.dashboards import (
@@ -750,3 +751,77 @@ def list_interventions(
             "outcome": outcome, "outcome_detail": detail,
         })
     return {"interventions": out, "count": len(out)}
+
+
+# ── Advisor ─────────────────────────────────────────────────────────────────
+
+class AdvisorRequest(BaseModel):
+    question: str
+    history: Optional[list] = None
+
+
+class AdvisorResponse(BaseModel):
+    answer: str
+
+
+@app.post("/api/advisor/ask", response_model=AdvisorResponse)
+def advisor_ask(
+    req: AdvisorRequest,
+    user: auth_mod.UserOut = Depends(auth_mod.current_user),
+) -> AdvisorResponse:
+    """
+    Ask the twin a question and let it decide which of its own accessors to read.
+
+    The tools are the same functions the dashboards call, so the advisor cannot
+    drift from what the portals show. Everything it needs is passed in here
+    rather than imported inside advisor.py, which keeps that module free of the
+    storage handles and testable without a database.
+    """
+    from dyon.intelligent.agent import build_llm
+
+    def _irrigation():
+        stage, values, measured = _read_twin_state()
+        band = PROFILES.get("soil_moisture", {}).get("by_stage", {}).get(stage, {}) or {}
+        return adv.irrigation_advice(
+            soil_moisture=values["soil_moisture"],
+            band=band,
+            transpiration_mm_hr=_transpiration_now(stage, values),
+            all_measured=len(measured) == len(SENSOR_FIELD_NAMES),
+        )
+
+    def _stage_forecast():
+        stage = cache.get_latest_cached("growth_stage") or "germination"
+        gdd = cache.get_latest_cached("gdd_accumulated")
+        with open("config/maize_phenology.yaml") as f:
+            phenology = yaml.safe_load(f)
+        t_base = float(phenology.get("t_base", 8.0))
+        air = ts_store.get_latest("air_temperature")
+        return adv.stage_forecast(
+            phenology, stage,
+            float(gdd) if gdd is not None else None,
+            max(0.0, float(air) - t_base) if air is not None else None,
+        )
+
+    context = {
+        "build_llm": lambda: build_llm(config),
+        "read_twin_state": _read_twin_state,
+        "assess": _assess,
+        "band": lambda field, stage: (
+            PROFILES.get(field, {}).get("by_stage", {}).get(stage, {}) or {}
+        ),
+        "irrigation": _irrigation,
+        "stage_forecast": _stage_forecast,
+    }
+
+    try:
+        answer, _ = advisor_mod.ask(req.question, context, req.history)
+    except Exception as exc:
+        # The LLM is a remote dependency; a dashboard should not 500 because
+        # ollama.com is unreachable.
+        raise HTTPException(
+            status_code=503,
+            detail=f"Advisor unavailable: {exc}",
+        ) from exc
+
+    return AdvisorResponse(answer=answer)
+

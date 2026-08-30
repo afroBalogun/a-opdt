@@ -13,7 +13,9 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 COPY docker/requirements-webapp.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+# --timeout/--retries: PyPI reads time out on slow links, and a droplet
+# build should not fail on one stalled download.
+RUN pip install --no-cache-dir --timeout 120 --retries 5 -r /tmp/requirements.txt
 
 # app.py opens "config/sensor_profiles.yaml" by relative path, so the working
 # directory has to be the repo root - not webapp/.

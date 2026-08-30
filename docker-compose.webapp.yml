@@ -23,7 +23,11 @@ services:
       AOPDT_CORS_ORIGINS: "${PUBLIC_WEB_ORIGIN:-http://localhost:5173}"
       # Which env file dyon's TwinConfig reads. .env.cloud points at the
       # managed InfluxDB/Mongo/Neo4j; .env is the local stack.
-      A_OPDT_ENV_FILE: "${A_OPDT_ENV_FILE:-.env}"
+      # Mounted below, not baked into the image. TwinConfig resolves this
+      # relative to the repo root (/app), and it is where DT_LLM__* lives -
+      # without it the advisor falls back to the provider default and fails at
+      # call time rather than at startup.
+      A_OPDT_ENV_FILE: "${A_OPDT_ENV_FILE:-.env.cloud}"
       DT_REDIS__URL: "redis://redis:6379"
       # NOT ${DT_MONGO__URI}: compose auto-loads a-opdt/.env for interpolation,
       # and that file says localhost:27017 - correct on the host, but inside a
@@ -31,6 +35,10 @@ services:
       # auth.py reads AOPDT_MONGO_URI first, then DT_MONGO__URI.
       DT_MONGO__URI: "mongodb://admin:password@mongodb:27017"
       AOPDT_MONGO_URI: "mongodb://admin:password@mongodb:27017"
+    volumes:
+      # Secrets stay out of the image; explicit environment above still wins
+      # over anything in the file (pydantic-settings precedence).
+      - ./.env.cloud:/app/.env.cloud:ro
     depends_on:
       - redis
       - mongodb
