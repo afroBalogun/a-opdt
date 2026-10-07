@@ -2,6 +2,12 @@
 # Maps sensor divergence signals to FSM state transitions.
 # Each rule defines the condition, severity, and escalation message.
 # Growth-stage-aware overrides are noted where critical windows apply.
+#
+# critical_stage_override semantics: during the listed stages, each threshold
+# the override names replaces the default threshold of the same field; every
+# other condition of the tier still has to hold (corroboration is kept). Set
+# `mode: replace` on an override only when a stage genuinely needs a tier
+# with fewer conditions.
 
 rules:
 

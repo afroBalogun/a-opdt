@@ -27,6 +27,7 @@ from dyon.core.base import LayerBase
 from dyon.core.events import DomainEvent
 
 from reactive.ekf_estimator import EKFForcing, EKFPlantStateEstimator
+from simulation.canopy_temperature import stage_delta_bounds
 from reactive.growth_stage_tracker import GrowthStageTracker
 
 if TYPE_CHECKING:
@@ -99,6 +100,7 @@ class HealthScoreCalculator(LayerBase):
         # constructed once in twin.py so both layers see the same live state.
         self._ekf = ekf
         self._ekf_last_tick = time.time()
+        self._last_forcing_values: dict[str, float] = {}
 
     async def initialise(self) -> None:
         self._stage_tracker = GrowthStageTracker(self.bus)
@@ -116,8 +118,15 @@ class HealthScoreCalculator(LayerBase):
         return score_field(self._profiles, field, value, stage)
 
     def _run_ekf(self, raw_values: dict[str, float], stage: str) -> None:
-        if not all(f in raw_values for f in (*_EKF_FORCING_FIELDS, "soil_moisture", "canopy_air_delta")):
+        # Forcing: a field missing this cycle keeps its last value (persistence),
+        # so a dropped weather channel does not stop the filter. With no value
+        # ever seen for a forcing field there is nothing to predict from.
+        for f in _EKF_FORCING_FIELDS:
+            if f in raw_values:
+                self._last_forcing_values[f] = raw_values[f]
+        if not all(f in self._last_forcing_values for f in _EKF_FORCING_FIELDS):
             return
+        forcing_values = self._last_forcing_values
 
         # Recalibrated periodically by the L8 Twin Calibration Agent.
         calibrated_slope = self.cache.get_latest_cached("calibrated_bb_slope_m")
@@ -132,17 +141,28 @@ class HealthScoreCalculator(LayerBase):
         if not band:
             return
 
+        delta_ww, delta_dry = stage_delta_bounds(self._profiles, stage)
         forcing = EKFForcing(
-            par_umol_m2_s=raw_values["par"],
-            air_temp_c=raw_values["air_temperature"],
-            canopy_temp_c=raw_values["canopy_temperature"],
-            relative_humidity_pct=raw_values["relative_humidity"],
-            co2_ppm=raw_values["co2"],
+            par_umol_m2_s=forcing_values["par"],
+            air_temp_c=forcing_values["air_temperature"],
+            canopy_temp_c=forcing_values["canopy_temperature"],
+            relative_humidity_pct=forcing_values["relative_humidity"],
+            co2_ppm=forcing_values["co2"],
             stage_field_capacity=band["nominal"],
             stage_wilting_point=band["crit_low"],
             dt_hours=dt_hours,
+            stage_delta_ww=delta_ww,
+            stage_delta_dry=delta_dry,
         )
-        self._ekf.step(forcing, raw_values["soil_moisture"], raw_values["canopy_air_delta"])
+        # Either observation may be missing; the filter then updates on the
+        # channel it has, or predicts alone (NFR3) rather than skipping.
+        self._ekf.step(
+            forcing,
+            raw_values.get("soil_moisture"),
+            raw_values.get("canopy_air_delta"),
+        )
+        self.cache.set_latest("ekf_confidence", self._ekf.confidence)
+        self.cache.set_latest("ekf_gate_latched", 1.0 if self._ekf.gate_latched else 0.0)
 
     async def evaluate(self) -> None:
         stage = self._stage_tracker.current_stage if self._stage_tracker else "germination"
@@ -234,6 +254,9 @@ class HealthScoreCalculator(LayerBase):
                         "relative_humidity": raw_values["relative_humidity"],
                         "co2": raw_values["co2"],
                         "soil_moisture": raw_values["soil_moisture"],
+                        # Optional: read by the L8 escalation protocol's
+                        # look-ahead check, which tolerates its absence.
+                        "canopy_air_delta": raw_values.get("canopy_air_delta"),
                         "growth_stage": stage,
                         "ekf_net_assimilation": self._ekf.net_assimilation,
                         "ekf_stomatal_conductance": self._ekf.stomatal_conductance,

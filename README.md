@@ -199,3 +199,35 @@ without converting between the two, and the projection endpoint does so
 explicitly. Extrapolated values are additionally clamped to the physically
 plausible range for each field, because a linear trend extended far enough
 always leaves it.
+
+## The autonomy gate (EKF confidence, latch and look-ahead)
+
+The L8 escalation protocol only lets the twin proceed on its own when the EKF
+shows it is tracking the plant. Three behaviours matter when operating it:
+
+- **Canopy-air observation model.** The filter now expects Tc - Ta from a
+  CWSI-style model (`simulation/canopy_temperature.py`): the stage's
+  well-watered nominal when conductance is at its unstressed value, rising to
+  the stage's dry limit as conductance falls. The previous `k / gs` proxy could
+  only be positive, while the sensors report Tc - Ta < 0 for a well-watered
+  crop, which held confidence at zero in normal running.
+- **Gate latch.** After confidence sits at zero for three updates, the gate
+  latches: every escalation goes to a person until a researcher checks the
+  sensors and clears it (`POST /api/gate/clear`, status at `GET /api/gate`).
+  A persistent sensor bias would otherwise be absorbed by the filter within a
+  few dozen cycles while confidence recovered.
+- **Look-ahead.** Below 0.60 confidence the protocol propagates an ensemble from
+  the filter's state for five cycles and checks it against what the sensors
+  then report. If the model predicts the readings, the case is resolved;
+  otherwise it goes to a human.
+
+Also: stage overrides in `stress_thresholds.yaml` now tighten the thresholds
+they name and keep the tier's other conditions (set `mode: replace` to opt
+out); the filter predicts through missing observations instead of skipping the
+cycle; and calibration reports a plausible range for Vcmax25 and the
+Ball-Berry slope alongside the best fit.
+
+`experiments/run_experiments.py` reproduces the offline evaluation
+(`python experiments/run_experiments.py .`), and
+`experiments/gate_smoke_test.py` runs the data-management layer and the
+escalation protocol together through the event bus with in-memory stores.

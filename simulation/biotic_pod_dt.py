@@ -36,6 +36,7 @@ from simulation.farquhar_c4 import (
     vapor_pressure_deficit_kpa,
     water_stress_factor,
 )
+from simulation.canopy_temperature import expected_canopy_air_delta, stage_delta_bounds
 from simulation.penman_monteith import transpiration_mm_per_hour
 
 if TYPE_CHECKING:
@@ -47,12 +48,6 @@ _REQUIRED_FIELDS = (
     "canopy_temperature", "air_temperature", "relative_humidity",
     "co2", "par", "soil_moisture", "canopy_air_delta",
 )
-
-# Empirically scaled so predicted canopy-air delta lands in the same order
-# of magnitude as the sensed field under well-watered conditions (see
-# config/sensor_profiles.yaml canopy_air_delta nominal band). A coarse
-# proxy, not a calibrated energy-balance fit.
-_CANOPY_DELTA_GAIN = 0.05
 
 
 class BioticPodDT(LayerBase):
@@ -126,9 +121,24 @@ class BioticPodDT(LayerBase):
         self._cumulative_carbon_umol_m2 += max(result.net_assimilation, 0.0) * dt_seconds
 
         # Lower stomatal conductance -> less evaporative cooling -> canopy
-        # warmer relative to air. A coarse, uncalibrated proxy signal, not
-        # an energy-balance model (see _CANOPY_DELTA_GAIN docstring above).
-        predicted_canopy_air_delta = _CANOPY_DELTA_GAIN / max(result.stomatal_conductance, 1e-3)
+        # warmer relative to air. CWSI-style expectation shared with the EKF's
+        # observation model (simulation/canopy_temperature.py): the stage's
+        # well-watered nominal at unstressed conductance, rising towards the
+        # stage's dry limit as conductance falls below its unstressed value.
+        potential = solve_farquhar_ball_berry(
+            leaf_temp_c=readings["canopy_temperature"],
+            par_umol_m2_s=readings["par"],
+            co2_ppm=readings["co2"],
+            air_temp_c=readings["air_temperature"],
+            relative_humidity_pct=readings["relative_humidity"],
+            water_stress_beta=1.0,
+            vcmax25_override=float(calibrated_vcmax25) if calibrated_vcmax25 is not None else None,
+            bb_slope_m_override=float(calibrated_bb_slope) if calibrated_bb_slope is not None else None,
+        )
+        delta_ww, delta_dry = stage_delta_bounds(self._profiles, stage)
+        predicted_canopy_air_delta = expected_canopy_air_delta(
+            result.stomatal_conductance, potential.stomatal_conductance, delta_ww, delta_dry,
+        )
         residual_canopy_air_delta = predicted_canopy_air_delta - readings["canopy_air_delta"]
 
         self.ts.write_point(

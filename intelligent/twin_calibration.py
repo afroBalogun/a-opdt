@@ -58,6 +58,7 @@ _MIN_SAMPLES = 15
 _N_INITIAL_RANDOM = 5
 _N_EVALUATIONS = 20    # doc: 30-50; trimmed for a live-demo cadence
 _GRID_RESOLUTION = 25  # per-dimension candidate density for the EI maximiser
+_PLAUSIBLE_TOLERANCE = 0.10  # objective within 10% of the best counts as an equally good fit
 
 
 class TwinCalibrationAgent(LayerBase):
@@ -83,6 +84,7 @@ class TwinCalibrationAgent(LayerBase):
             self._profiles: dict = yaml.safe_load(f)
 
         self._buffer: deque[dict] = deque(maxlen=buffer_size)
+        self.last_ranges: dict[str, float] = {}
 
     async def initialise(self) -> None:
         self.bus.subscribe("data_management.cycle_complete", self._on_cycle_complete)
@@ -155,7 +157,33 @@ class TwinCalibrationAgent(LayerBase):
             y_observed.append(next_objective)
 
         best_idx = int(np.argmin(y_observed))
-        return x_observed[best_idx][0], x_observed[best_idx][1], y_observed[best_idx]
+
+        # Plausible ranges. When assimilation is light-limited the data say
+        # little about Vcmax25, and many parameter pairs fit almost as well as
+        # the best one. Report the spread of grid points whose objective is
+        # within _PLAUSIBLE_TOLERANCE of the best, so a fitted value is never
+        # presented as a measured trait without its uncertainty. The exact
+        # objective is used rather than the GP surrogate: the surrogate's
+        # smoothing made the ranges too narrow to contain the true values,
+        # and the full 25 x 25 grid costs well under a second.
+        objective_grid = np.array([self._objective(float(v), float(s)) for v, s in candidates])
+        # The returned parameters and objective must come from the same point:
+        # whichever of the search's best and the grid's best fits better.
+        grid_idx = int(np.argmin(objective_grid))
+        if objective_grid[grid_idx] < y_observed[best_idx]:
+            best_x, best = [float(v) for v in candidates[grid_idx]], float(objective_grid[grid_idx])
+        else:
+            best_x, best = x_observed[best_idx], y_observed[best_idx]
+        plausible = candidates[objective_grid <= best * (1.0 + _PLAUSIBLE_TOLERANCE)]
+        if len(plausible) == 0:
+            plausible = np.array([best_x])
+        self.last_ranges = {
+            "vcmax25_low": float(plausible[:, 0].min()),
+            "vcmax25_high": float(plausible[:, 0].max()),
+            "bb_slope_m_low": float(plausible[:, 1].min()),
+            "bb_slope_m_high": float(plausible[:, 1].max()),
+        }
+        return best_x[0], best_x[1], best
 
     async def _run_calibration(self) -> None:
         if len(self._buffer) < _MIN_SAMPLES:
@@ -167,21 +195,27 @@ class TwinCalibrationAgent(LayerBase):
 
         best_vcmax, best_slope, best_objective = await asyncio.to_thread(self._calibrate)
 
+        ranges = self.last_ranges
         self.cache.set_latest("calibrated_vcmax25", best_vcmax)
         self.cache.set_latest("calibrated_bb_slope_m", best_slope)
+        for key, value in ranges.items():
+            self.cache.set_latest(f"calibrated_{key}", value)
         self.doc.log_event(
             "twin_calibration",
             {
                 "vcmax25": best_vcmax,
                 "bb_slope_m": best_slope,
+                **ranges,
                 "objective": best_objective,
                 "n_samples": len(self._buffer),
             },
             severity="info",
         )
         self.log.info(
-            "Calibration complete: Vcmax25=%.2f BB_slope_m=%.2f objective=%.4f (n=%d)",
-            best_vcmax, best_slope, best_objective, len(self._buffer),
+            "Calibration complete: Vcmax25=%.2f [%.1f-%.1f] BB_slope_m=%.2f [%.2f-%.2f] objective=%.4f (n=%d)",
+            best_vcmax, ranges["vcmax25_low"], ranges["vcmax25_high"],
+            best_slope, ranges["bb_slope_m_low"], ranges["bb_slope_m_high"],
+            best_objective, len(self._buffer),
         )
 
     async def start(self) -> None:

@@ -1,0 +1,370 @@
+{
+ "E6": {
+  "mean_conf": 0.9983614901885884,
+  "frac_below_060": 0.0,
+  "runs_latched": 0
+ },
+ "E2": {
+  "nominal": {
+   "conf_pre": 0.9978313535251099,
+   "runs_below_060": 0,
+   "median_cycles_to_060": null,
+   "conf_late": 0.9995439377225639,
+   "runs_latched": 0,
+   "gate_late": 0.9995439377225639,
+   "sm_rmse": 0.0015161640853580238,
+   "false_gate_cycles": 0,
+   "false_latches": 0,
+   "cycles_checked": 4400
+  },
+  "real_drought_observed": {
+   "conf_pre": 0.9978313535251099,
+   "runs_below_060": 0,
+   "median_cycles_to_060": null,
+   "conf_late": 0.9967135088174881,
+   "runs_latched": 0,
+   "gate_late": 0.9967135088174881,
+   "sm_rmse": 0.0025195153957214144
+  },
+  "closure_gs_x0.7": {
+   "conf_pre": 0.9978313535251099,
+   "runs_below_060": 20,
+   "median_cycles_to_060": 3.0,
+   "conf_late": 0.23518795766547534,
+   "runs_latched": 20,
+   "gate_late": 0.0,
+   "sm_rmse": 0.003711694284933667
+  },
+  "closure_gs_x0.4": {
+   "conf_pre": 0.9978313535251099,
+   "runs_below_060": 20,
+   "median_cycles_to_060": 2.0,
+   "conf_late": 0.0,
+   "runs_latched": 20,
+   "gate_late": 0.0,
+   "sm_rmse": 0.007113732334611292
+  },
+  "delta_bias_+0.3": {
+   "conf_pre": 0.9978313535251099,
+   "runs_below_060": 14,
+   "median_cycles_to_060": 67.0,
+   "conf_late": 0.9496429173010833,
+   "runs_latched": 0,
+   "gate_late": 0.9496429173010833,
+   "sm_rmse": 0.0017774434029337795
+  },
+  "delta_bias_+1.0": {
+   "conf_pre": 0.9978313535251099,
+   "runs_below_060": 20,
+   "median_cycles_to_060": 3.0,
+   "conf_late": 0.3008708789308031,
+   "runs_latched": 20,
+   "gate_late": 0.0,
+   "sm_rmse": 0.003420238992731425
+  },
+  "soil_bias_+0.05": {
+   "conf_pre": 0.9978313535251099,
+   "runs_below_060": 20,
+   "median_cycles_to_060": 1.0,
+   "conf_late": 0.9989424466600664,
+   "runs_latched": 20,
+   "gate_late": 0.0,
+   "sm_rmse": 0.0395868596044863
+  },
+  "transient_spike_2cyc": {
+   "conf_pre": 0.9978313535251099,
+   "runs_below_060": 5,
+   "median_cycles_to_060": 2.0,
+   "conf_late": 0.9995439330674056,
+   "runs_latched": 0,
+   "gate_late": 0.9995439330674056,
+   "sm_rmse": 0.0015192704152827432
+  }
+ },
+ "E2_outage": {
+  "sm_err_end_of_outage_new": 0.0011991388169555611,
+  "sm_err_end_of_outage_skip": 0.0011006240818606794,
+  "sm_sd_before": 0.002126785186529031,
+  "sm_sd_end_of_outage": 0.00666850053677695,
+  "conf_after_outage": 0.9988849661319368
+ },
+ "E3": {
+  "nominal": {
+   "outcomes": {
+    "proceed": 20
+   },
+   "lookahead_conf_mean": null,
+   "lookahead_conf_range": null,
+   "late_escalation": {
+    "proceed": 20
+   }
+  },
+  "transient_spike_2cyc": {
+   "outcomes": {
+    "resolved by look-ahead": 5,
+    "proceed": 15
+   },
+   "lookahead_conf_mean": 0.9994977843156418,
+   "lookahead_conf_range": [
+    0.9974889215782089,
+    1.0
+   ],
+   "late_escalation": {
+    "proceed": 20
+   }
+  },
+  "closure_gs_x0.7": {
+   "outcomes": {
+    "human review (look-ahead)": 20
+   },
+   "lookahead_conf_mean": 0.0,
+   "lookahead_conf_range": [
+    0.0,
+    0.0
+   ],
+   "late_escalation": {
+    "human review (latched)": 20
+   }
+  },
+  "closure_gs_x0.4": {
+   "outcomes": {
+    "human review (look-ahead)": 20
+   },
+   "lookahead_conf_mean": 0.0,
+   "lookahead_conf_range": [
+    0.0,
+    0.0
+   ],
+   "late_escalation": {
+    "human review (latched)": 20
+   }
+  },
+  "delta_bias_+1.0": {
+   "outcomes": {
+    "human review (look-ahead)": 20
+   },
+   "lookahead_conf_mean": 0.0,
+   "lookahead_conf_range": [
+    0.0,
+    0.0
+   ],
+   "late_escalation": {
+    "human review (latched)": 20
+   }
+  },
+  "soil_bias_+0.05": {
+   "outcomes": {
+    "human review (look-ahead)": 20
+   },
+   "lookahead_conf_mean": 0.0,
+   "lookahead_conf_range": [
+    0.0,
+    0.0
+   ],
+   "late_escalation": {
+    "human review (latched)": 20
+   }
+  }
+ },
+ "E4": [
+  {
+   "stage": "anthesis",
+   "change": {},
+   "active": {},
+   "state": "HEALTHY"
+  },
+  {
+   "stage": "vegetative_late",
+   "change": {
+    "soil_moisture": 0.19
+   },
+   "active": {},
+   "state": "HEALTHY"
+  },
+  {
+   "stage": "vegetative_late",
+   "change": {
+    "soil_moisture": 0.19,
+    "canopy_air_delta": 1.3
+   },
+   "active": {
+    "drought": "warning"
+   },
+   "state": "WATER_STRESS"
+  },
+  {
+   "stage": "anthesis",
+   "change": {
+    "soil_moisture": 0.21
+   },
+   "active": {},
+   "state": "HEALTHY"
+  },
+  {
+   "stage": "anthesis",
+   "change": {
+    "soil_moisture": 0.21,
+    "canopy_air_delta": 0.9
+   },
+   "active": {
+    "drought": "warning"
+   },
+   "state": "WATER_STRESS"
+  },
+  {
+   "stage": "vegetative_late",
+   "change": {
+    "soil_moisture": 0.21,
+    "canopy_air_delta": 0.9
+   },
+   "active": {},
+   "state": "HEALTHY"
+  },
+  {
+   "stage": "vegetative_late",
+   "change": {
+    "soil_moisture": 0.12,
+    "canopy_air_delta": 3.0
+   },
+   "active": {
+    "drought": "warning"
+   },
+   "state": "WATER_STRESS"
+  },
+  {
+   "stage": "vegetative_late",
+   "change": {
+    "soil_moisture": 0.12,
+    "canopy_air_delta": 3.0,
+    "fv_fm": 0.66
+   },
+   "active": {
+    "drought": "critical"
+   },
+   "state": "WATER_STRESS"
+  },
+  {
+   "stage": "anthesis",
+   "change": {
+    "canopy_temperature": 34.0
+   },
+   "active": {},
+   "state": "HEALTHY"
+  },
+  {
+   "stage": "anthesis",
+   "change": {
+    "canopy_temperature": 34.0,
+    "isoprene": 12.0
+   },
+   "active": {
+    "heat_stress": "warning"
+   },
+   "state": "WATER_STRESS"
+  },
+  {
+   "stage": "vegetative_late",
+   "change": {
+    "canopy_temperature": 34.0,
+    "isoprene": 12.0
+   },
+   "active": {
+    "heat_stress": "warning"
+   },
+   "state": "WATER_STRESS"
+  },
+  {
+   "stage": "anthesis",
+   "change": {
+    "soil_moisture": 0.21,
+    "canopy_air_delta": 0.9,
+    "soil_ec": 2.0
+   },
+   "active": {
+    "drought": "warning",
+    "salinity": "warning"
+   },
+   "state": "MULTI_STRESS"
+  },
+  {
+   "stage": "anthesis",
+   "change": {
+    "hexenal": 5.0
+   },
+   "active": {},
+   "state": "HEALTHY"
+  },
+  {
+   "stage": "anthesis",
+   "change": {
+    "hexenal": 5.0,
+    "ethylene": 2.0
+   },
+   "active": {
+    "pest_pressure": "warning"
+   },
+   "state": "CHLOROPHYLL_STRESS"
+  },
+  {
+   "stage": "anthesis",
+   "change": {
+    "soil_moisture": 0.14,
+    "canopy_air_delta": 2.6
+   },
+   "active": {
+    "drought": "warning"
+   },
+   "state": "WATER_STRESS"
+  },
+  {
+   "stage": "anthesis",
+   "change": {
+    "soil_moisture": 0.14,
+    "canopy_air_delta": 2.6,
+    "fv_fm": 0.66
+   },
+   "active": {
+    "drought": "critical"
+   },
+   "state": "WATER_STRESS"
+  }
+ ],
+ "E5": [
+  {
+   "true": [
+    45.0,
+    4.0
+   ],
+   "vc_mean": 45.5,
+   "m_mean": 3.9666666666666663,
+   "vc_range_width": 13.75,
+   "m_range_width": 0.4166666666666664,
+   "vc_truth_in_range": 10,
+   "m_truth_in_range": 10
+  },
+  {
+   "true": [
+    60.0,
+    5.0
+   ],
+   "vc_mean": 61.5,
+   "m_mean": 4.95,
+   "vc_range_width": 31.0,
+   "m_range_width": 0.41666666666666663,
+   "vc_truth_in_range": 10,
+   "m_truth_in_range": 10
+  },
+  {
+   "true": [
+    75.0,
+    6.0
+   ],
+   "vc_mean": 77.5,
+   "m_mean": 5.95,
+   "vc_range_width": 31.0,
+   "m_range_width": 0.36666666666666653,
+   "vc_truth_in_range": 10,
+   "m_truth_in_range": 10
+  }
+ ]
+}

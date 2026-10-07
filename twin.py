@@ -218,6 +218,7 @@ class MaizeTwin(AbstractDigitalTwin):
             ekf=ekf,
             doc_store=doc_store,
             knowledge_graph=knowledge_graph,
+            cache=cache,
             profiles_path="config/sensor_profiles.yaml",
         )
 

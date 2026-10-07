@@ -131,6 +131,13 @@ class ResearcherDashboard(BaseModel):
     total_count: int
     calibrated_vcmax25: Optional[float] = None
     calibrated_bb_slope_m: Optional[float] = None
+    #: Range of values that fit the data almost as well as the best one (L8).
+    #: Vcmax25 is often weakly identified, so the range matters as much as the value.
+    calibrated_vcmax25_range: Optional[tuple[float, float]] = None
+    calibrated_bb_slope_m_range: Optional[tuple[float, float]] = None
+    #: EKF self-consistency and whether the autonomy gate is latched.
+    ekf_confidence: Optional[float] = None
+    gate_latched: bool = False
 
 
 class FarmerDashboard(BaseModel):

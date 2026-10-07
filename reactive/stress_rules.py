@@ -50,12 +50,22 @@ def evaluate_stress_rules(
     for category, spec in rules.items():
         conditions = spec["conditions"]
         override = spec.get("critical_stage_override")
+        warning_conditions = dict(conditions.get("warning", {}))
+        critical_conditions = dict(conditions.get("critical", {}))
         if override and current_stage in override.get("stages", []):
-            warning_conditions = override.get("warning", conditions.get("warning", {}))
-            critical_conditions = override.get("critical", conditions.get("critical", {}))
-        else:
-            warning_conditions = conditions.get("warning", {})
-            critical_conditions = conditions.get("critical", {})
+            # An override tightens the thresholds it names and keeps every
+            # other condition of the tier. Replacing the tier wholesale
+            # silently dropped corroborating fields (e.g. heat stress at
+            # anthesis fired on canopy temperature alone, without isoprene),
+            # contradicting the multi-sensor corroboration rule above.
+            # A rule that really wants a single-condition tier during a
+            # stage sets `mode: replace` on its override.
+            if override.get("mode", "merge") == "replace":
+                warning_conditions = dict(override.get("warning", warning_conditions))
+                critical_conditions = dict(override.get("critical", critical_conditions))
+            else:
+                warning_conditions.update(override.get("warning", {}))
+                critical_conditions.update(override.get("critical", {}))
 
         if _tier_breached(critical_conditions, readings):
             result[category] = "critical"

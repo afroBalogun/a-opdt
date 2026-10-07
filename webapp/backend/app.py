@@ -324,6 +324,7 @@ def researcher_dashboard(
 
     vcmax = cache.get_latest_cached("calibrated_vcmax25")
     bb_slope = cache.get_latest_cached("calibrated_bb_slope_m")
+    gate = _gate_status()
 
     return ResearcherDashboard(
         measured_age_min=_measured_age_min(),
@@ -336,7 +337,53 @@ def researcher_dashboard(
         total_count=len(SENSOR_FIELD_NAMES),
         calibrated_vcmax25=float(vcmax) if vcmax is not None else None,
         calibrated_bb_slope_m=float(bb_slope) if bb_slope is not None else None,
+        calibrated_vcmax25_range=_cached_range("calibrated_vcmax25_low", "calibrated_vcmax25_high"),
+        calibrated_bb_slope_m_range=_cached_range("calibrated_bb_slope_m_low", "calibrated_bb_slope_m_high"),
+        ekf_confidence=gate["ekf_confidence"],
+        gate_latched=gate["gate_latched"],
     )
+
+
+def _cached_range(low_key: str, high_key: str) -> Optional[tuple[float, float]]:
+    low, high = cache.get_latest_cached(low_key), cache.get_latest_cached(high_key)
+    if low is None or high is None:
+        return None
+    return float(low), float(high)
+
+
+def _gate_status() -> dict:
+    confidence = cache.get_latest_cached("ekf_confidence")
+    latched = cache.get_latest_cached("ekf_gate_latched")
+    try:
+        latched = float(latched or 0) > 0.5
+    except (TypeError, ValueError):
+        latched = False
+    return {
+        "ekf_confidence": float(confidence) if confidence is not None else None,
+        "gate_latched": latched,
+    }
+
+
+# ── Autonomy gate ───────────────────────────────────────────────────────────
+#
+# After a confidence collapse the twin latches its autonomy gate: a sensor
+# bias and a genuine change look alike to the filter, so a person checks the
+# instruments before autonomy resumes. Clearing is a request the twin acts on
+# at its next cycle (the escalation protocol reads it and logs the clearance).
+
+@app.get("/api/gate")
+def gate_status(
+    user: auth_mod.UserOut = Depends(auth_mod.require_role("researcher")),
+) -> dict:
+    return _gate_status()
+
+
+@app.post("/api/gate/clear")
+def clear_gate(
+    user: auth_mod.UserOut = Depends(auth_mod.require_role("researcher")),
+) -> dict:
+    cache.set_latest("gate_clear_requested", 1.0)
+    return {"requested": True, **_gate_status()}
 
 
 @app.get("/api/dashboard/farmer", response_model=FarmerDashboard)
